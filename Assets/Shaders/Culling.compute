@@ -1,0 +1,32 @@
+
+#pragma kernel main
+
+StructuredBuffer<float4x4> InstanceMatricesBeforeCulling;
+
+RWStructuredBuffer<float4x4> InstanceMatricesAfterCulling;
+RWStructuredBuffer<uint> InstanceIndices;
+
+// Not reading or writing into the buffer. Just using the internal counter.
+RWStructuredBuffer<uint> InstanceCount;
+
+float4 CameraPosAndRadius2;
+uint TotalInstanceCount;
+
+[numthreads(64,1,1)]
+void main (uint3 id : SV_DispatchThreadID)
+{	
+    if (id.x >= TotalInstanceCount)
+        return;
+		
+	float4x4 instanceMatrix = InstanceMatricesBeforeCulling[id.x];
+
+	float3 instancePos = float3(instanceMatrix[0][3], instanceMatrix[1][3], instanceMatrix[2][3]);
+
+	if (dot(instancePos - CameraPosAndRadius2.xyz, instancePos - CameraPosAndRadius2.xyz) < CameraPosAndRadius2.w)
+    {
+        uint currentInstanceIndex = InstanceCount.IncrementCounter();
+        InstanceMatricesAfterCulling[currentInstanceIndex] = instanceMatrix;
+        InstanceIndices[currentInstanceIndex] = id.x;
+
+    }
+}
